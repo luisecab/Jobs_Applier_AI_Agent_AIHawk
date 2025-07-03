@@ -15,7 +15,7 @@ def chrome_browser_options():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--ignore-certificate-errors")
     options.add_argument("--disable-extensions")
-    options.add_argument("--disable-gpu")  # Opzionale, utile in alcuni ambienti
+    options.add_argument("--disable-gpu")  # Optional, useful in some environments
     options.add_argument("window-size=1200x800")
     options.add_argument("--disable-background-timer-throttling")
     options.add_argument("--disable-backgrounding-occluded-windows")
@@ -29,8 +29,8 @@ def chrome_browser_options():
     options.add_argument("--disable-animations")
     options.add_argument("--disable-cache")
     options.add_argument("--incognito")
-    options.add_argument("--allow-file-access-from-files")  # Consente l'accesso ai file locali
-    options.add_argument("--disable-web-security")         # Disabilita la sicurezza web
+    options.add_argument("--allow-file-access-from-files")  # Allow access to local files
+    options.add_argument("--disable-web-security")         # Disable web security
     logger.debug("Using Chrome in incognito mode")
     
     return options
@@ -50,44 +50,44 @@ def init_browser() -> webdriver.Chrome:
 
 def HTML_to_PDF(html_content, driver):
     """
-    Converte una stringa HTML in un PDF e restituisce il PDF come stringa base64.
+    Convert an HTML string to a PDF and return it encoded as base64.
 
-    :param html_content: Stringa contenente il codice HTML da convertire.
-    :param driver: Istanza del WebDriver di Selenium.
-    :return: Stringa base64 del PDF generato.
-    :raises ValueError: Se l'input HTML non è una stringa valida.
-    :raises RuntimeError: Se si verifica un'eccezione nel WebDriver.
+    :param html_content: HTML code to convert.
+    :param driver: Selenium WebDriver instance.
+    :return: Base64 string of the generated PDF.
+    :raises ValueError: If the input HTML is empty or invalid.
+    :raises RuntimeError: If a WebDriver exception occurs.
     """
-    # Validazione del contenuto HTML
+    # Validate HTML content
     if not isinstance(html_content, str) or not html_content.strip():
-        raise ValueError("Il contenuto HTML deve essere una stringa non vuota.")
+        raise ValueError("HTML content must be a non-empty string.")
 
-    # Codifica l'HTML in un URL di tipo data
+    # Encode HTML as a data URL
     encoded_html = urllib.parse.quote(html_content)
     data_url = f"data:text/html;charset=utf-8,{encoded_html}"
 
     try:
         driver.get(data_url)
-        # Attendi che la pagina si carichi completamente
-        time.sleep(2)  # Potrebbe essere necessario aumentare questo tempo per HTML complessi
+        # Wait for the page to fully load
+        time.sleep(2)  # Increase if the HTML is complex
 
-        # Esegue il comando CDP per stampare la pagina in PDF
+        # Execute the CDP command to print the page to PDF
         pdf_base64 = driver.execute_cdp_cmd("Page.printToPDF", {
-            "printBackground": True,          # Includi lo sfondo nella stampa
-            "landscape": False,               # Stampa in verticale (False per ritratto)
-            "paperWidth": 8.27,               # Larghezza del foglio in pollici (A4)
-            "paperHeight": 11.69,             # Altezza del foglio in pollici (A4)
-            "marginTop": 0.8,                  # Margine superiore in pollici (circa 2 cm)
-            "marginBottom": 0.8,               # Margine inferiore in pollici (circa 2 cm)
-            "marginLeft": 0.5,                 # Margine sinistro in pollici (circa 1.27 cm)
-            "marginRight": 0.5,                # Margine destro in pollici (circa 1.27 cm)
-            "displayHeaderFooter": False,      # Non visualizzare intestazioni e piè di pagina
-            "preferCSSPageSize": True,         # Preferire le dimensioni della pagina CSS
-            "generateDocumentOutline": False,  # Non generare un sommario del documento
-            "generateTaggedPDF": False,        # Non generare PDF taggato
-            "transferMode": "ReturnAsBase64"   # Restituire il PDF come stringa base64
+            "printBackground": True,          # Include background graphics
+            "landscape": False,               # Portrait orientation
+            "paperWidth": 8.27,               # Page width in inches (A4)
+            "paperHeight": 11.69,             # Page height in inches (A4)
+            "marginTop": 0.8,                 # Top margin in inches (~2 cm)
+            "marginBottom": 0.8,              # Bottom margin in inches (~2 cm)
+            "marginLeft": 0.5,                # Left margin in inches (~1.27 cm)
+            "marginRight": 0.5,               # Right margin in inches (~1.27 cm)
+            "displayHeaderFooter": False,     # Do not show headers/footers
+            "preferCSSPageSize": True,        # Use CSS page size
+            "generateDocumentOutline": False, # Do not generate document outline
+            "generateTaggedPDF": False,       # Do not generate tagged PDF
+            "transferMode": "ReturnAsBase64"  # Return PDF as base64 string
         })
         return pdf_base64['data']
     except Exception as e:
-        logger.error(f"Si è verificata un'eccezione WebDriver: {e}")
-        raise RuntimeError(f"Si è verificata un'eccezione WebDriver: {e}")
+        logger.error(f"WebDriver exception occurred: {e}")
+        raise RuntimeError(f"WebDriver exception occurred: {e}")
