@@ -2,6 +2,7 @@ import base64
 import sys
 from pathlib import Path
 import traceback
+import shutil
 from typing import List, Optional, Tuple, Dict
 
 import click
@@ -21,6 +22,7 @@ from src.utils.constants import (
     PLAIN_TEXT_RESUME_YAML,
     SECRETS_YAML,
     WORK_PREFERENCES_YAML,
+    RESUME_PDF,
 )
 # from ai_hawk.bot_facade import AIHawkBotFacade
 # from ai_hawk.job_manager import AIHawkJobManager
@@ -187,7 +189,7 @@ class FileManager:
     REQUIRED_FILES = [SECRETS_YAML, WORK_PREFERENCES_YAML, PLAIN_TEXT_RESUME_YAML]
 
     @staticmethod
-    def validate_data_folder(app_data_folder: Path) -> Tuple[Path, Path, Path, Path]:
+    def validate_data_folder(app_data_folder: Path) -> Tuple[Path, Path, Path, Path, Optional[Path]]:
         """Validate the existence of the data folder and required files."""
         if not app_data_folder.is_dir():
             raise FileNotFoundError(f"Data folder not found: {app_data_folder}")
@@ -199,20 +201,24 @@ class FileManager:
         output_folder = app_data_folder / "output"
         output_folder.mkdir(exist_ok=True)
 
+        pdf_resume = app_data_folder / RESUME_PDF
         return (
             app_data_folder / SECRETS_YAML,
             app_data_folder / WORK_PREFERENCES_YAML,
             app_data_folder / PLAIN_TEXT_RESUME_YAML,
             output_folder,
+            pdf_resume if pdf_resume.exists() else None,
         )
 
     @staticmethod
-    def get_uploads(plain_text_resume_file: Path) -> Dict[str, Path]:
+    def get_uploads(plain_text_resume_file: Path, resume_pdf_file: Optional[Path] = None) -> Dict[str, Path]:
         """Convert resume file paths to a dictionary."""
         if not plain_text_resume_file.exists():
             raise FileNotFoundError(f"Plain text resume file not found: {plain_text_resume_file}")
 
         uploads = {"plainTextResume": plain_text_resume_file}
+        if resume_pdf_file and resume_pdf_file.exists():
+            uploads["resumePdf"] = resume_pdf_file
 
         return uploads
 
@@ -310,6 +316,12 @@ def create_resume_pdf_job_tailored(parameters: dict, llm_api_key: str):
     """
     try:
         logger.info("Generating a CV based on provided parameters.")
+        existing_pdf = parameters["uploads"].get("resumePdf")
+        if existing_pdf:
+            output_dir = Path(parameters["outputFileDirectory"])
+            shutil.copy(existing_pdf, output_dir / "resume_tailored.pdf")
+            logger.info(f"Using existing resume at: {existing_pdf}")
+            return
 
         # Carica il resume in testo semplice
         with open(parameters["uploads"]["plainTextResume"], "r", encoding="utf-8") as file:
@@ -395,6 +407,12 @@ def create_resume_pdf(parameters: dict, llm_api_key: str):
     """
     try:
         logger.info("Generating a CV based on provided parameters.")
+        existing_pdf = parameters["uploads"].get("resumePdf")
+        if existing_pdf:
+            output_dir = Path(parameters["outputFileDirectory"])
+            shutil.copy(existing_pdf, output_dir / "resume_base.pdf")
+            logger.info(f"Using existing resume at: {existing_pdf}")
+            return
 
         # Load the plain text resume
         with open(parameters["uploads"]["plainTextResume"], "r", encoding="utf-8") as file:
@@ -529,14 +547,14 @@ def main():
     try:
         # Define and validate the data folder
         data_folder = Path("data_folder")
-        secrets_file, config_file, plain_text_resume_file, output_folder = FileManager.validate_data_folder(data_folder)
+        secrets_file, config_file, plain_text_resume_file, output_folder, resume_pdf_file = FileManager.validate_data_folder(data_folder)
 
         # Validate configuration and secrets
         config = ConfigValidator.validate_config(config_file)
         llm_api_key = ConfigValidator.validate_secrets(secrets_file)
 
         # Prepare parameters
-        config["uploads"] = FileManager.get_uploads(plain_text_resume_file)
+        config["uploads"] = FileManager.get_uploads(plain_text_resume_file, resume_pdf_file)
         config["outputFileDirectory"] = output_folder
 
         # Interactive prompt for user to select actions
